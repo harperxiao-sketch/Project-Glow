@@ -1,232 +1,276 @@
-let port;
-let reader;
+let tree;
+let leaves=[];
+let particles=[];
+let birds=[];
+let stars=[];
 
-let brightness = 0;
-
-let growth = 0;
-
-let branches = [];
-
-let birds = [];
-
-let wind = 0;
-
-
-
-async function connectArduino(){
-
-port = await navigator.serial.requestPort();
-
-await port.open({ baudRate:9600 });
-
-const decoder = new TextDecoderStream();
-
-port.readable.pipeTo(decoder.writable);
-
-reader = decoder.readable.getReader();
-
-readSerial();
-
-}
-
-
-
-async function readSerial(){
-
-while(true){
-
-const { value, done } = await reader.read();
-
-if(done) break;
-
-let val = parseInt(value);
-
-if(!isNaN(val)){
-
-brightness = val;
-
-}
-
-}
-
-}
-
-
+let windField=[];
+let windScale=0.002;
 
 function setup(){
+createCanvas(window.innerWidth,window.innerHeight);
 
-createCanvas(900,600);
+tree=new Tree(width/2,height*0.85);
 
-document
-.getElementById("connect")
-.onclick = connectArduino;
-
+for(let i=0;i<120;i++){
+stars.push(new Star());
 }
 
-
+for(let i=0;i<3;i++){
+birds.push(new Bird());
+}
+}
 
 function draw(){
 
-background(0);
+drawNight();
 
-wind = sin(frameCount * 0.01) * 0.2;
+let wind=noise(frameCount*0.01)*0.5;
 
-drawGround();
+tree.update();
+tree.display(wind);
 
-drawTree();
-
-drawBirds();
-
+updateLeaves();
+updateParticles();
+updateBirds();
+updateStars();
 }
 
+function drawNight(){
 
+background(4,6,18);
 
-function drawGround(){
-
-stroke(40);
-
-line(0,height-80,width,height-80);
-
-}
-
-
-
-function drawTree(){
-
-translate(width/2,height-80);
-
-let target = map(brightness,0,255,20,220);
-
-if(growth < target){
-
-growth += 0.4;
-
-}
-
-
-
-stroke(180,255,200);
-
-strokeWeight(4);
-
-
-
-drawBranch(0,0,growth,-PI/2,5);
-
-}
-
-
-
-function drawBranch(x,y,len,angle,depth){
-
-if(depth <= 0) return;
-
-
-
-let sway = wind * depth;
-
-let x2 = x + cos(angle + sway) * len;
-
-let y2 = y + sin(angle + sway) * len;
-
-
-
-line(x,y,x2,y2);
-
-
-
-if(depth < 3){
-
-drawLeaf(x2,y2);
-
-}
-
-
-
-drawBranch(x2,y2,len*0.7,angle + PI/6,depth-1);
-
-drawBranch(x2,y2,len*0.7,angle - PI/6,depth-1);
-
-}
-
-
-
-function drawLeaf(x,y){
+let moonGlow=sin(frameCount*0.01)*20;
 
 noStroke();
+fill(240,240,255,220);
+circle(width-140,120,80+moonGlow);
 
-fill(150,255,200,180);
-
-ellipse(x,y,8,5);
+for(let s of stars){
+s.display();
+}
 
 }
 
+class Tree{
 
+constructor(x,y){
+this.root=new Branch(x,y,-PI/2,120,0);
+this.branches=[this.root];
+}
 
-function drawBirds(){
+update(){
 
+if(frameCount%100==0 && this.branches.length<120){
 
+let b=random(this.branches);
 
-if(random() < 0.01){
+if(!b.split){
 
-birds.push({
+let a=random(0.3,0.7);
 
-x:-20,
+let left=new Branch(b.endX,b.endY,b.angle-a,b.len*0.72,b.depth+1);
+let right=new Branch(b.endX,b.endY,b.angle+a,b.len*0.72,b.depth+1);
 
-y:random(100,300),
+this.branches.push(left);
+this.branches.push(right);
 
-speed:random(1,2)
+b.split=true;
 
-});
+if(b.depth>2){
+leaves.push(new Leaf(b.endX,b.endY));
+}
+
+}
+}
 
 }
 
+display(wind){
 
+for(let b of this.branches){
+b.display(wind);
+}
 
-stroke(200);
+}
 
+}
+
+class Branch{
+
+constructor(x,y,angle,len,depth){
+
+this.x=x;
+this.y=y;
+this.angle=angle;
+this.len=len;
+this.depth=depth;
+this.split=false;
+
+this.endX=x+cos(angle)*len;
+this.endY=y+sin(angle)*len;
+
+}
+
+display(wind){
+
+stroke(120,180,150);
+strokeWeight(map(this.depth,0,6,8,1));
+
+let sway=this.depth>0? wind*this.depth*10 :0;
+
+let ex=this.x+cos(this.angle+sway)*this.len;
+let ey=this.y+sin(this.angle+sway)*this.len;
+
+line(this.x,this.y,ex,ey);
+
+this.endX=ex;
+this.endY=ey;
+
+}
+
+}
+
+class Leaf{
+
+constructor(x,y){
+this.x=x;
+this.y=y;
+this.size=random(6,10);
+this.phase=random(TWO_PI);
+}
+
+display(){
+
+let glow=sin(frameCount*0.05+this.phase)*2;
+
+noStroke();
+fill(120,255,180,200);
+ellipse(this.x,this.y,this.size+glow,this.size*0.6+glow);
+
+if(random()<0.01){
+particles.push(new Glow(this.x,this.y));
+}
+
+}
+
+}
+
+function updateLeaves(){
+
+for(let l of leaves){
+l.display();
+}
+
+}
+
+class Glow{
+
+constructor(x,y){
+this.x=x;
+this.y=y;
+this.life=120;
+this.vx=random(-0.2,0.2);
+this.vy=random(-0.5,-1.2);
+}
+
+update(){
+this.x+=this.vx;
+this.y+=this.vy;
+this.life--;
+}
+
+display(){
+noStroke();
+fill(150,255,220,this.life);
+circle(this.x,this.y,4);
+}
+
+}
+
+function updateParticles(){
+
+for(let i=particles.length-1;i>=0;i--){
+
+particles[i].update();
+particles[i].display();
+
+if(particles[i].life<0){
+particles.splice(i,1);
+}
+
+}
+
+}
+
+class Bird{
+
+constructor(){
+
+this.x=random(width);
+this.y=random(120,260);
+this.speed=random(1.5,3);
+
+}
+
+update(){
+
+this.x+=this.speed;
+
+if(this.x>width+40){
+this.x=-40;
+this.y=random(120,260);
+}
+
+}
+
+display(){
+
+stroke(220);
+strokeWeight(2);
 noFill();
 
-
-
-for(let i=birds.length-1;i>=0;i--){
-
-let b = birds[i];
-
-
-
-drawBird(b.x,b.y);
-
-
-
-b.x += b.speed;
-
-
-
-if(b.x > width+20){
-
-birds.splice(i,1);
+arc(this.x,this.y,22,10,PI,TWO_PI);
+arc(this.x+20,this.y,22,10,PI,TWO_PI);
 
 }
 
 }
 
+function updateBirds(){
 
+for(let b of birds){
+b.update();
+b.display();
+}
 
 }
 
+class Star{
 
+constructor(){
 
-function drawBird(x,y){
+this.x=random(width);
+this.y=random(height*0.6);
+this.size=random(1,2);
+this.phase=random(TWO_PI);
 
-beginShape();
+}
 
-vertex(x,y);
+display(){
 
-vertex(x+8,y-5);
+let twinkle=sin(frameCount*0.02+this.phase)*1.5;
 
-vertex(x+16,y);
+noStroke();
+fill(255,255,255,180);
+circle(this.x,this.y,this.size+twinkle);
 
-endShape();
+}
 
+}
+
+function updateStars(){
+for(let s of stars){
+s.display();
+}
 }
