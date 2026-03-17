@@ -1,92 +1,107 @@
-let branches=[]
-let leaves=[]
-let particles=[]
-let birds=[]
-let stars=[]
+let brightness = 0;
 
-let growLevel=1
+let growLevel = 1;
+
+let prevBrightness = 0;
+let goingUp = false;
+let breathCount = 0;
+
+let branches = [];
+let leaves = [];
+let fireflies = [];
+let stars = [];
 
 function setup(){
 
-createCanvas(window.innerWidth,window.innerHeight)
+createCanvas(window.innerWidth,window.innerHeight);
 
-generateTree()
+generateTree();
 
-for(let i=0;i<120;i++){
-stars.push(new Star())
+for(let i=0;i<200;i++){
+stars.push(new Star());
 }
 
-for(let i=0;i<2;i++){
-birds.push(new Bird())
+for(let i=0;i<30;i++){
+fireflies.push(new Firefly());
 }
 
 }
 
 function draw(){
 
-background(6,8,20)
+drawGalaxy();
 
-drawMoon()
-
-updateStars()
-
-drawTree()
-
-updateLeaves()
-
-updateParticles()
-
-updateBirds()
+drawTree();
+updateLeaves();
+updateFireflies();
 
 }
 
-function drawMoon(){
+function drawGalaxy(){
 
-noStroke()
-fill(240)
-circle(width-140,120,80)
+background(5,6,18);
+
+// 银河渐变
+for(let i=0;i<height;i+=2){
+
+let n = noise(i*0.01,frameCount*0.002);
+
+stroke(10+40*n,10+20*n,30+60*n,80);
+line(0,i,width,i);
+
+}
+
+// 星星
+for(let s of stars){
+s.display();
+}
+
+// 月亮
+noStroke();
+fill(240);
+circle(width-140,120,80);
 
 }
 
 function generateTree(){
 
-branches=[]
-leaves=[]
+branches=[];
+leaves=[];
 
-let startX=width/2
-let startY=height*0.85
+let x=width/2;
+let y=height*0.85;
 
-branches.push(new Branch(startX,startY,-PI/2,120,0))
+branches.push(new Branch(x,y,-PI/2,120,0));
 
 for(let i=0;i<growLevel;i++){
 
-let newBranches=[]
+let newBranches=[];
 
 for(let b of branches){
 
 if(!b.split){
 
-let a=random(0.3,0.6)
+let a=random(0.3,0.6);
 
 newBranches.push(
 new Branch(b.endX,b.endY,b.angle-a,b.len*0.7,b.depth+1)
-)
+);
 
 newBranches.push(
 new Branch(b.endX,b.endY,b.angle+a,b.len*0.7,b.depth+1)
-)
+);
 
-b.split=true
+b.split=true;
 
 if(b.depth>2){
-leaves.push(new Leaf(b.endX,b.endY))
+leaves.push(new Leaf(b.endX,b.endY));
 }
 
 }
 
 }
 
-branches=branches.concat(newBranches)
+branches=branches.concat(newBranches);
 
 }
 
@@ -96,24 +111,36 @@ class Branch{
 
 constructor(x,y,angle,len,depth){
 
-this.x=x
-this.y=y
-this.angle=angle
-this.len=len
-this.depth=depth
-this.split=false
+this.x=x;
+this.y=y;
+this.angle=angle;
+this.len=len;
+this.depth=depth;
+this.split=false;
 
-this.endX=x+cos(angle)*len
-this.endY=y+sin(angle)*len
+this.endX=x+cos(angle)*len;
+this.endY=y+sin(angle)*len;
 
 }
 
 display(){
 
-stroke(120,200,160)
-strokeWeight(map(this.depth,0,6,8,1))
+let w = this.depth===0 ? 16 : map(this.depth,1,6,6,1);
 
-line(this.x,this.y,this.endX,this.endY)
+strokeWeight(w);
+
+// 🌳 树皮纹理
+for(let i=0;i<3;i++){
+
+stroke(80+random(-10,10),120,90);
+line(
+this.x+random(-1,1),
+this.y,
+this.endX+random(-1,1),
+this.endY
+);
+
+}
 
 }
 
@@ -122,7 +149,7 @@ line(this.x,this.y,this.endX,this.endY)
 function drawTree(){
 
 for(let b of branches){
-b.display()
+b.display();
 }
 
 }
@@ -130,24 +157,36 @@ b.display()
 class Leaf{
 
 constructor(x,y){
-this.x=x
-this.y=y
-this.size=random(8,12)
+this.x=x;
+this.y=y;
+this.size=random(6,10);
+this.angle=random(TWO_PI);
 }
 
 display(){
 
-let d=dist(mouseX,mouseY,this.x,this.y)
+let d=dist(mouseX,mouseY,this.x,this.y);
 
 if(d<120){
-fill(160,255,200)
+fill(160,255,200);
 }else{
-fill(100,200,140)
+fill(90,200,130);
 }
 
-noStroke()
+noStroke();
 
-ellipse(this.x,this.y,this.size,this.size*0.6)
+// 🌿 真实叶子形状
+push();
+translate(this.x,this.y);
+rotate(this.angle);
+
+beginShape();
+vertex(0,0);
+bezierVertex(6,-4,10,-8,0,-12);
+bezierVertex(-10,-8,-6,-4,0,0);
+endShape(CLOSE);
+
+pop();
 
 }
 
@@ -156,93 +195,52 @@ ellipse(this.x,this.y,this.size,this.size*0.6)
 function updateLeaves(){
 
 for(let l of leaves){
-l.display()
-
-if(random()<0.01){
-particles.push(new Glow(l.x,l.y))
+l.display();
 }
 
 }
 
-}
-
-class Glow{
-
-constructor(x,y){
-this.x=x
-this.y=y
-this.life=100
-this.vy=random(-0.5,-1)
-}
-
-update(){
-this.y+=this.vy
-this.life--
-}
-
-display(){
-
-fill(150,255,220,this.life)
-noStroke()
-circle(this.x,this.y,4)
-
-}
-
-}
-
-function updateParticles(){
-
-for(let i=particles.length-1;i>=0;i--){
-
-particles[i].update()
-particles[i].display()
-
-if(particles[i].life<0){
-particles.splice(i,1)
-}
-
-}
-
-}
-
-class Bird{
+class Firefly{
 
 constructor(){
-
-this.x=random(width)
-this.y=random(120,260)
-this.speed=random(2,3)
-
+this.x=random(width);
+this.y=random(height);
+this.vx=random(-1,1);
+this.vy=random(-1,1);
+this.phase=random(TWO_PI);
 }
 
 update(){
 
-this.x+=this.speed
+// 群体行为（轻微聚集）
+let centerX=width/2;
+let centerY=height/2;
 
-if(this.x>width+40){
-this.x=-40
-}
+this.vx += (centerX-this.x)*0.00001;
+this.vy += (centerY-this.y)*0.00001;
+
+this.x+=this.vx;
+this.y+=this.vy;
 
 }
 
 display(){
 
-stroke(220)
-strokeWeight(2)
-noFill()
+let glow = sin(frameCount*0.05+this.phase)*120;
 
-arc(this.x,this.y,20,10,PI,TWO_PI)
-arc(this.x+20,this.y,20,10,PI,TWO_PI)
-
-}
+fill(150,255,200,glow);
+noStroke();
+circle(this.x,this.y,4);
 
 }
 
-function updateBirds(){
+}
 
-for(let b of birds){
-b.update()
-b.display()
+function updateFireflies(){
+
+for(let f of fireflies){
+f.update();
+f.display();
 }
 
 }
@@ -251,43 +249,73 @@ class Star{
 
 constructor(){
 
-this.x=random(width)
-this.y=random(height*0.6)
-this.size=random(1,2)
-this.phase=random(TWO_PI)
+this.x=random(width);
+this.y=random(height*0.6);
+this.size=random(1,2);
+this.phase=random(TWO_PI);
 
 }
 
 display(){
 
-let t=sin(frameCount*0.02+this.phase)
+let t=sin(frameCount*0.02+this.phase);
 
-fill(255,255,255,150+t*100)
-noStroke()
+fill(255,255,255,150+t*100);
+noStroke();
 
-circle(this.x,this.y,this.size)
+circle(this.x,this.y,this.size);
+
+}
+
+}
+
+// 🌱 呼吸控制生长
+async function readSerial(){
+
+while(true){
+
+const { value, done } = await reader.read();
+
+if(done) break;
+
+let val = parseInt(value);
+
+if(!isNaN(val)){
+
+brightness = val;
+
+if(brightness > prevBrightness){
+goingUp = true;
+}
+
+if(goingUp && brightness < prevBrightness){
+
+breathCount++;
+goingUp = false;
+
+if(breathCount % 3 === 0){
+
+growLevel++;
+generateTree();
 
 }
 
 }
 
-function updateStars(){
+prevBrightness = brightness;
 
-for(let s of stars){
-s.display()
+}
+
 }
 
 }
 
+// 🖱 交互
 function mousePressed(){
-
-growLevel++
-generateTree()
-
+growLevel++;
+generateTree();
 }
 
 function mouseDragged(){
-
-particles.push(new Glow(mouseX,mouseY))
-
+fireflies.push(new Firefly());
 }
