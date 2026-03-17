@@ -29,7 +29,7 @@ rules.push({
   b: "FF+[+F-F-F]-[-F+F+F]"
 });
 
-// ⭐ 初始化时间（关键）
+// ⭐ 初始化时间
 lastGrowTime = millis();
 
 }
@@ -40,15 +40,14 @@ lastGrowTime = millis();
 
 function draw(){
 
-drawGalaxy();
+drawBackground();
 
-// ⭐ 先更新生长
+// ⭐ 每5秒自动生长
 growTree();
 
-// ⭐ 再画树
 push();
 translate(width/2, height*0.9);
-drawLSystem();
+drawTree();
 pop();
 
 updateLeaves();
@@ -57,12 +56,12 @@ updateParticles();
 }
 
 // ======================
-// 自动生长（每2秒）
+// 🌱 自动生长（5秒）
 // ======================
 
 function growTree(){
 
-if(millis() - lastGrowTime > 2000){
+if(millis() - lastGrowTime > 5000){
 
 let next = "";
 
@@ -87,13 +86,9 @@ next += current;
 
 }
 
-// ⭐ 核心：更新 sentence（之前很多版本漏掉）
 sentence = next;
-
-// ⭐ 控制树变细
 len *= 0.65;
 
-// ⭐ 更新时间（必须）
 lastGrowTime = millis();
 
 }
@@ -101,10 +96,10 @@ lastGrowTime = millis();
 }
 
 // ======================
-// 画树（L-system）
+// 🌳 DRAW TREE
 // ======================
 
-function drawLSystem(){
+function drawTree(){
 
 let stack = [];
 
@@ -118,18 +113,18 @@ if(c === "F"){
 
 let sw = map(len,2,100,1,16);
 
-// 树干不动
+// 树干更粗
 if(sw > 10){
 strokeWeight(14);
-} else {
+}else{
 strokeWeight(sw);
 }
 
 line(0,0,0,-len);
 translate(0,-len);
 
-// 生成叶子
-if(len < 12 && random() < 0.3){
+// 🌿 生成叶子
+if(len < 12 && random() < 0.25){
 leaves.push(new Leaf(0,0));
 }
 
@@ -152,7 +147,7 @@ pop();
 }
 
 // ======================
-// 叶子（真实形状+动画）
+// 🌿 LEAF（回到简单版本）
 // ======================
 
 class Leaf{
@@ -160,37 +155,32 @@ class Leaf{
 constructor(x,y){
 this.x=x;
 this.y=y;
-this.size=0;
-this.target=random(6,12);
-this.angle=random(TWO_PI);
+this.size=random(6,10);
 }
 
 update(){
-if(this.size < this.target){
-this.size += 0.2;
-}
+
+// 微弱呼吸感
+this.size += sin(frameCount*0.05)*0.05;
 
 if(random()<0.01){
 particles.push(new Glow(this.x,this.y));
 }
+
 }
 
 display(){
 
-push();
-translate(this.x,this.y);
-rotate(this.angle);
+let d=dist(mouseX,mouseY,this.x,this.y);
 
-fill(120,255,180);
+if(d<120){
+fill(160,255,200);
+}else{
+fill(100,200,140);
+}
+
 noStroke();
-
-beginShape();
-vertex(0,0);
-bezierVertex(6,-4,10,-8,0,-12);
-bezierVertex(-10,-8,-6,-4,0,0);
-endShape(CLOSE);
-
-pop();
+ellipse(this.x,this.y,this.size,this.size*0.6);
 
 }
 
@@ -206,7 +196,7 @@ l.display();
 }
 
 // ======================
-// 粒子（发光）
+// ✨ PARTICLES
 // ======================
 
 class Glow{
@@ -214,21 +204,21 @@ class Glow{
 constructor(x,y){
 this.x=x;
 this.y=y;
-this.life=120;
-this.vx=random(-0.3,0.3);
-this.vy=random(-1,-0.5);
+this.life=100;
+this.vy=random(-0.5,-1);
 }
 
 update(){
-this.x+=this.vx;
 this.y+=this.vy;
 this.life--;
 }
 
 display(){
-noStroke();
+
 fill(150,255,220,this.life);
+noStroke();
 circle(this.x,this.y,4);
+
 }
 
 }
@@ -249,45 +239,26 @@ particles.splice(i,1);
 }
 
 // ======================
-// 银河背景
+// 🌙 BACKGROUND（原版）
 // ======================
 
-function drawGalaxy(){
+function drawBackground(){
 
-background(5,6,18);
+background(5,8,20);
 
-// 银河旋转
-push();
-translate(width/2, height/3);
-
-for(let i=0;i<200;i++){
-
-let a = i*0.1 + frameCount*0.002;
-let r = i*1.2;
-
-let x = cos(a)*r;
-let y = sin(a)*r*0.5;
-
-fill(100,150,255,80);
-noStroke();
-circle(x,y,2);
-
-}
-
-pop();
-
-// 星星
+// ⭐ 星星
 for(let i=0;i<80;i++){
 
 let x = noise(i)*width;
 let y = noise(i+100)*height*0.6;
 
 fill(255,255,255,150);
+noStroke();
 circle(x,y,1);
 
 }
 
-// 月亮
+// 🌙 月亮
 fill(240);
 noStroke();
 circle(width-140,120,80);
