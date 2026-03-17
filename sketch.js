@@ -58,7 +58,7 @@ let newQueue = [];
 
 for(let b of growQueue){
 
-if(b.depth < 15)
+if(b.depth < 10)
 
 let angleOffset = random(0.3,0.6);
 
