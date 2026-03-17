@@ -18,13 +18,17 @@ function setup(){
 
 createCanvas(window.innerWidth, window.innerHeight);
 
-// ⭐ 初始树干（确保一开始就能看到）
+// ⭐ 初始树干（确保能看到）
 let root = new Branch(width/2, height*0.8, -PI/2, 120, 0);
 
 branches.push(root);
 growQueue.push(root);
 
-lastGrowTime = millis();
+// ⭐ 一开始就生长一次（关键）
+growStep();
+
+// ⭐ 让后续马上继续触发
+lastGrowTime = millis() - 5000;
 
 }
 
@@ -36,7 +40,7 @@ function draw(){
 
 drawBackground();
 
-// ⭐ 自动生长（5秒）
+// ⭐ 每5秒自动生长
 if(millis() - lastGrowTime > 5000){
 growStep();
 lastGrowTime = millis();
@@ -46,7 +50,7 @@ drawTree();
 updateLeaves();
 updateParticles();
 
-// ⭐ 防止 growQueue 意外清空（关键保护）
+// ⭐ 防止 growQueue 变空（防黑屏）
 if(growQueue.length === 0 && branches.length > 0){
 growQueue.push(branches[branches.length - 1]);
 }
@@ -101,7 +105,7 @@ leaves.push(new Leaf(b.endX, b.endY));
 
 }
 
-// ⭐ 核心：防止 growQueue 变空
+// ⭐ 防止队列空
 if(newQueue.length > 0){
 growQueue = newQueue;
 }
@@ -141,11 +145,9 @@ display(){
 
 this.update();
 
-// ⭐ 插值动画
 let ex = lerp(this.x, this.endX, this.progress);
 let ey = lerp(this.y, this.endY, this.progress);
 
-// 树干 vs 树枝
 let w;
 
 if(this.depth === 0){
@@ -164,7 +166,7 @@ line(this.x, this.y, ex, ey);
 }
 
 // ======================
-// 🌿 LEAF（简单版）
+// 🌿 LEAF
 // ======================
 
 class Leaf{
