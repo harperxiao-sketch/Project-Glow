@@ -18,7 +18,9 @@ function setup(){
 
 createCanvas(window.innerWidth, window.innerHeight);
 
-let root = new Branch(width/2, height*0.9, -PI/2, 120, 0);
+// ⭐ 往上挪一点（关键修复）
+let root = new Branch(width/2, height*0.8, -PI/2, 120, 0);
+
 branches.push(root);
 growQueue.push(root);
 
@@ -34,7 +36,7 @@ function draw(){
 
 drawBackground();
 
-// ⭐ 自动生长（5秒）
+// ⭐ 自动生长
 if(millis() - lastGrowTime > 5000){
 growStep();
 lastGrowTime = millis();
@@ -82,7 +84,6 @@ branches.push(right);
 newQueue.push(left);
 newQueue.push(right);
 
-// 🌿 叶子
 if(b.depth > 2){
 leaves.push(new Leaf(b.endX, b.endY));
 }
@@ -111,6 +112,7 @@ this.depth = depth;
 
 this.progress = 0;
 
+// ⭐ 初始终点
 this.endX = x + cos(angle)*len;
 this.endY = y + sin(angle)*len;
 
@@ -119,7 +121,7 @@ this.endY = y + sin(angle)*len;
 update(){
 
 if(this.progress < 1){
-this.progress += 0.02;
+this.progress += 0.03; // 稍微快一点
 }
 
 }
@@ -128,10 +130,10 @@ display(){
 
 this.update();
 
+// ⭐ 插值生长
 let ex = lerp(this.x, this.endX, this.progress);
 let ey = lerp(this.y, this.endY, this.progress);
 
-// 树干 vs 树枝
 let w;
 
 if(this.depth === 0){
@@ -150,7 +152,19 @@ line(this.x, this.y, ex, ey);
 }
 
 // ======================
-// 🌿 LEAF（带交互）
+// DRAW TREE
+// ======================
+
+function drawTree(){
+
+for(let b of branches){
+b.display();
+}
+
+}
+
+// ======================
+// 🌿 LEAF
 // ======================
 
 class Leaf{
@@ -165,7 +179,6 @@ display(){
 
 let d = dist(mouseX, mouseY, this.x, this.y);
 
-// 🖱 靠近发光
 if(d < 120){
 fill(160,255,200);
 }else{
@@ -175,7 +188,6 @@ fill(100,200,140);
 noStroke();
 ellipse(this.x, this.y, this.size, this.size*0.6);
 
-// ✨ 自动粒子
 if(random()<0.01){
 particles.push(new Glow(this.x, this.y));
 }
@@ -238,7 +250,7 @@ particles.splice(i,1);
 }
 
 // ======================
-// 🌙 BACKGROUND（无银河）
+// 🌙 BACKGROUND
 // ======================
 
 function drawBackground(){
@@ -268,12 +280,10 @@ circle(width-140,120,80);
 // 🖱 INTERACTION
 // ======================
 
-// 点击 → 立即长一层
 function mousePressed(){
 growStep();
 }
 
-// 拖动 → 粒子
 function mouseDragged(){
 particles.push(new Glow(mouseX, mouseY));
 }
