@@ -1,12 +1,12 @@
-// ========================
+// ======================
 // GLOBAL
-// ========================
+// ======================
 
 let axiom = "F";
 let sentence = axiom;
 let rules = [];
 
-let len = 80;
+let len = 100;
 let angle;
 
 let leaves = [];
@@ -14,41 +14,51 @@ let particles = [];
 
 let lastGrowTime = 0;
 
+// ======================
+// SETUP
+// ======================
+
 function setup(){
 
-createCanvas(window.innerWidth,window.innerHeight);
+createCanvas(window.innerWidth, window.innerHeight);
 
 angle = radians(22);
 
-rules[0] = {
+rules.push({
   a: "F",
   b: "FF+[+F-F-F]-[-F+F+F]"
-};
+});
+
+// ⭐ 初始化时间（关键）
+lastGrowTime = millis();
 
 }
 
-// ========================
+// ======================
 // DRAW LOOP
-// ========================
+// ======================
 
 function draw(){
 
 drawGalaxy();
 
-translate(width/2,height*0.9);
+// ⭐ 先更新生长
+growTree();
 
+// ⭐ 再画树
+push();
+translate(width/2, height*0.9);
 drawLSystem();
+pop();
 
 updateLeaves();
 updateParticles();
 
-growTree();
-
 }
 
-// ========================
-// L-SYSTEM GROWTH
-// ========================
+// ======================
+// 自动生长（每2秒）
+// ======================
 
 function growTree(){
 
@@ -56,12 +66,12 @@ if(millis() - lastGrowTime > 2000){
 
 let next = "";
 
-for(let i=0;i<sentence.length;i++){
+for(let i=0; i<sentence.length; i++){
 
 let current = sentence.charAt(i);
 let found = false;
 
-for(let j=0;j<rules.length;j++){
+for(let j=0; j<rules.length; j++){
 
 if(current === rules[j].a){
 next += rules[j].b;
@@ -77,22 +87,24 @@ next += current;
 
 }
 
+// ⭐ 核心：更新 sentence（之前很多版本漏掉）
 sentence = next;
-len *= 0.6;
 
+// ⭐ 控制树变细
+len *= 0.65;
+
+// ⭐ 更新时间（必须）
 lastGrowTime = millis();
 
 }
 
 }
 
-// ========================
-// DRAW TREE
-// ========================
+// ======================
+// 画树（L-system）
+// ======================
 
 function drawLSystem(){
-
-background(5,6,18);
 
 let stack = [];
 
@@ -104,22 +116,20 @@ let c = sentence.charAt(i);
 
 if(c === "F"){
 
-let wind = noise(i*0.05,frameCount*0.01)*0.3;
+let sw = map(len,2,100,1,16);
 
-let sw = map(len,2,80,1,14);
+// 树干不动
+if(sw > 10){
+strokeWeight(14);
+} else {
 strokeWeight(sw);
-
-// trunk stays stable (no wind at base)
-if(sw > 8){
-wind = 0;
 }
 
 line(0,0,0,-len);
-
 translate(0,-len);
 
-// spawn leaves gradually
-if(len < 10 && random() < 0.3){
+// 生成叶子
+if(len < 12 && random() < 0.3){
 leaves.push(new Leaf(0,0));
 }
 
@@ -131,10 +141,6 @@ else if(c === "-"){
 rotate(-angle);
 }
 else if(c === "["){
-stack.push({
-pos: createVector(0,0),
-angle: getRotation()
-});
 push();
 }
 else if(c === "]"){
@@ -145,34 +151,28 @@ pop();
 
 }
 
-// ========================
-// LEAVES (ANIMATED GROWTH)
-// ========================
+// ======================
+// 叶子（真实形状+动画）
+// ======================
 
 class Leaf{
 
 constructor(x,y){
-
 this.x=x;
 this.y=y;
 this.size=0;
 this.target=random(6,12);
 this.angle=random(TWO_PI);
-
 }
 
 update(){
-
-// grow animation
 if(this.size < this.target){
 this.size += 0.2;
 }
 
-// subtle glow
 if(random()<0.01){
 particles.push(new Glow(this.x,this.y));
 }
-
 }
 
 display(){
@@ -184,7 +184,6 @@ rotate(this.angle);
 fill(120,255,180);
 noStroke();
 
-// leaf shape
 beginShape();
 vertex(0,0);
 bezierVertex(6,-4,10,-8,0,-12);
@@ -197,45 +196,39 @@ pop();
 
 }
 
-// ========================
-// PARTICLES (LIGHT)
-// ========================
-
-class Glow{
-
-constructor(x,y){
-
-this.x=x;
-this.y=y;
-this.life=120;
-this.vx=random(-0.3,0.3);
-this.vy=random(-1,-0.5);
-
-}
-
-update(){
-
-this.x += this.vx;
-this.y += this.vy;
-this.life--;
-
-}
-
-display(){
-
-noStroke();
-fill(150,255,220,this.life);
-circle(this.x,this.y,4);
-
-}
-
-}
-
 function updateLeaves(){
 
 for(let l of leaves){
 l.update();
 l.display();
+}
+
+}
+
+// ======================
+// 粒子（发光）
+// ======================
+
+class Glow{
+
+constructor(x,y){
+this.x=x;
+this.y=y;
+this.life=120;
+this.vx=random(-0.3,0.3);
+this.vy=random(-1,-0.5);
+}
+
+update(){
+this.x+=this.vx;
+this.y+=this.vy;
+this.life--;
+}
+
+display(){
+noStroke();
+fill(150,255,220,this.life);
+circle(this.x,this.y,4);
 }
 
 }
@@ -255,25 +248,25 @@ particles.splice(i,1);
 
 }
 
-// ========================
-// GALAXY BACKGROUND
-// ========================
+// ======================
+// 银河背景
+// ======================
 
 function drawGalaxy(){
 
 background(5,6,18);
 
-// rotating galaxy
+// 银河旋转
 push();
-translate(width/2,height/3);
+translate(width/2, height/3);
 
 for(let i=0;i<200;i++){
 
-let a = i * 0.1 + frameCount*0.002;
-let r = i * 1.2;
+let a = i*0.1 + frameCount*0.002;
+let r = i*1.2;
 
-let x = cos(a) * r;
-let y = sin(a) * r * 0.5;
+let x = cos(a)*r;
+let y = sin(a)*r*0.5;
 
 fill(100,150,255,80);
 noStroke();
@@ -283,7 +276,7 @@ circle(x,y,2);
 
 pop();
 
-// stars
+// 星星
 for(let i=0;i<80;i++){
 
 let x = noise(i)*width;
@@ -294,7 +287,7 @@ circle(x,y,1);
 
 }
 
-// moon
+// 月亮
 fill(240);
 noStroke();
 circle(width-140,120,80);
