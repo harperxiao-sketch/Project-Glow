@@ -1,185 +1,190 @@
-let brightness = 0;
+// ========================
+// GLOBAL
+// ========================
 
-let growLevel = 1;
+let axiom = "F";
+let sentence = axiom;
+let rules = [];
 
-let prevBrightness = 0;
-let goingUp = false;
-let breathCount = 0;
+let len = 80;
+let angle;
 
-let branches = [];
 let leaves = [];
-let fireflies = [];
-let stars = [];
+let particles = [];
+
+let lastGrowTime = 0;
 
 function setup(){
 
 createCanvas(window.innerWidth,window.innerHeight);
 
-generateTree();
+angle = radians(22);
 
-for(let i=0;i<200;i++){
-stars.push(new Star());
-}
-
-for(let i=0;i<30;i++){
-fireflies.push(new Firefly());
-}
+rules[0] = {
+  a: "F",
+  b: "FF+[+F-F-F]-[-F+F+F]"
+};
 
 }
+
+// ========================
+// DRAW LOOP
+// ========================
 
 function draw(){
 
 drawGalaxy();
 
-drawTree();
+translate(width/2,height*0.9);
+
+drawLSystem();
+
 updateLeaves();
-updateFireflies();
+updateParticles();
+
+growTree();
 
 }
 
-function drawGalaxy(){
+// ========================
+// L-SYSTEM GROWTH
+// ========================
+
+function growTree(){
+
+if(millis() - lastGrowTime > 2000){
+
+let next = "";
+
+for(let i=0;i<sentence.length;i++){
+
+let current = sentence.charAt(i);
+let found = false;
+
+for(let j=0;j<rules.length;j++){
+
+if(current === rules[j].a){
+next += rules[j].b;
+found = true;
+break;
+}
+
+}
+
+if(!found){
+next += current;
+}
+
+}
+
+sentence = next;
+len *= 0.6;
+
+lastGrowTime = millis();
+
+}
+
+}
+
+// ========================
+// DRAW TREE
+// ========================
+
+function drawLSystem(){
 
 background(5,6,18);
 
-// 银河渐变
-for(let i=0;i<height;i+=2){
+let stack = [];
 
-let n = noise(i*0.01,frameCount*0.002);
+stroke(120,200,160);
 
-stroke(10+40*n,10+20*n,30+60*n,80);
-line(0,i,width,i);
+for(let i=0;i<sentence.length;i++){
 
+let c = sentence.charAt(i);
+
+if(c === "F"){
+
+let wind = noise(i*0.05,frameCount*0.01)*0.3;
+
+let sw = map(len,2,80,1,14);
+strokeWeight(sw);
+
+// trunk stays stable (no wind at base)
+if(sw > 8){
+wind = 0;
 }
 
-// 星星
-for(let s of stars){
-s.display();
+line(0,0,0,-len);
+
+translate(0,-len);
+
+// spawn leaves gradually
+if(len < 10 && random() < 0.3){
+leaves.push(new Leaf(0,0));
 }
 
-// 月亮
-noStroke();
-fill(240);
-circle(width-140,120,80);
-
 }
-
-function generateTree(){
-
-branches=[];
-leaves=[];
-
-let x=width/2;
-let y=height*0.85;
-
-branches.push(new Branch(x,y,-PI/2,120,0));
-
-for(let i=0;i<growLevel;i++){
-
-let newBranches=[];
-
-for(let b of branches){
-
-if(!b.split){
-
-let a=random(0.3,0.6);
-
-newBranches.push(
-new Branch(b.endX,b.endY,b.angle-a,b.len*0.7,b.depth+1)
-);
-
-newBranches.push(
-new Branch(b.endX,b.endY,b.angle+a,b.len*0.7,b.depth+1)
-);
-
-b.split=true;
-
-if(b.depth>2){
-leaves.push(new Leaf(b.endX,b.endY));
+else if(c === "+"){
+rotate(angle);
+}
+else if(c === "-"){
+rotate(-angle);
+}
+else if(c === "["){
+stack.push({
+pos: createVector(0,0),
+angle: getRotation()
+});
+push();
+}
+else if(c === "]"){
+pop();
 }
 
 }
 
 }
 
-branches=branches.concat(newBranches);
-
-}
-
-}
-
-class Branch{
-
-constructor(x,y,angle,len,depth){
-
-this.x=x;
-this.y=y;
-this.angle=angle;
-this.len=len;
-this.depth=depth;
-this.split=false;
-
-this.endX=x+cos(angle)*len;
-this.endY=y+sin(angle)*len;
-
-}
-
-display(){
-
-let w = this.depth===0 ? 16 : map(this.depth,1,6,6,1);
-
-strokeWeight(w);
-
-// 🌳 树皮纹理
-for(let i=0;i<3;i++){
-
-stroke(80+random(-10,10),120,90);
-line(
-this.x+random(-1,1),
-this.y,
-this.endX+random(-1,1),
-this.endY
-);
-
-}
-
-}
-
-}
-
-function drawTree(){
-
-for(let b of branches){
-b.display();
-}
-
-}
+// ========================
+// LEAVES (ANIMATED GROWTH)
+// ========================
 
 class Leaf{
 
 constructor(x,y){
+
 this.x=x;
 this.y=y;
-this.size=random(6,10);
+this.size=0;
+this.target=random(6,12);
 this.angle=random(TWO_PI);
+
+}
+
+update(){
+
+// grow animation
+if(this.size < this.target){
+this.size += 0.2;
+}
+
+// subtle glow
+if(random()<0.01){
+particles.push(new Glow(this.x,this.y));
+}
+
 }
 
 display(){
 
-let d=dist(mouseX,mouseY,this.x,this.y);
-
-if(d<120){
-fill(160,255,200);
-}else{
-fill(90,200,130);
-}
-
-noStroke();
-
-// 🌿 真实叶子形状
 push();
 translate(this.x,this.y);
 rotate(this.angle);
 
+fill(120,255,180);
+noStroke();
+
+// leaf shape
 beginShape();
 vertex(0,0);
 bezierVertex(6,-4,10,-8,0,-12);
@@ -192,130 +197,106 @@ pop();
 
 }
 
-function updateLeaves(){
+// ========================
+// PARTICLES (LIGHT)
+// ========================
 
-for(let l of leaves){
-l.display();
-}
+class Glow{
 
-}
+constructor(x,y){
 
-class Firefly{
+this.x=x;
+this.y=y;
+this.life=120;
+this.vx=random(-0.3,0.3);
+this.vy=random(-1,-0.5);
 
-constructor(){
-this.x=random(width);
-this.y=random(height);
-this.vx=random(-1,1);
-this.vy=random(-1,1);
-this.phase=random(TWO_PI);
 }
 
 update(){
 
-// 群体行为（轻微聚集）
-let centerX=width/2;
-let centerY=height/2;
-
-this.vx += (centerX-this.x)*0.00001;
-this.vy += (centerY-this.y)*0.00001;
-
-this.x+=this.vx;
-this.y+=this.vy;
+this.x += this.vx;
+this.y += this.vy;
+this.life--;
 
 }
 
 display(){
 
-let glow = sin(frameCount*0.05+this.phase)*120;
-
-fill(150,255,200,glow);
 noStroke();
+fill(150,255,220,this.life);
 circle(this.x,this.y,4);
 
 }
 
 }
 
-function updateFireflies(){
+function updateLeaves(){
 
-for(let f of fireflies){
-f.update();
-f.display();
+for(let l of leaves){
+l.update();
+l.display();
 }
 
 }
 
-class Star{
+function updateParticles(){
 
-constructor(){
+for(let i=particles.length-1;i>=0;i--){
 
-this.x=random(width);
-this.y=random(height*0.6);
-this.size=random(1,2);
-this.phase=random(TWO_PI);
+particles[i].update();
+particles[i].display();
+
+if(particles[i].life<0){
+particles.splice(i,1);
+}
 
 }
 
-display(){
+}
 
-let t=sin(frameCount*0.02+this.phase);
+// ========================
+// GALAXY BACKGROUND
+// ========================
 
-fill(255,255,255,150+t*100);
+function drawGalaxy(){
+
+background(5,6,18);
+
+// rotating galaxy
+push();
+translate(width/2,height/3);
+
+for(let i=0;i<200;i++){
+
+let a = i * 0.1 + frameCount*0.002;
+let r = i * 1.2;
+
+let x = cos(a) * r;
+let y = sin(a) * r * 0.5;
+
+fill(100,150,255,80);
 noStroke();
-
-circle(this.x,this.y,this.size);
-
-}
+circle(x,y,2);
 
 }
 
-// 🌱 呼吸控制生长
-async function readSerial(){
+pop();
 
-while(true){
+// stars
+for(let i=0;i<80;i++){
 
-const { value, done } = await reader.read();
+let x = noise(i)*width;
+let y = noise(i+100)*height*0.6;
 
-if(done) break;
-
-let val = parseInt(value);
-
-if(!isNaN(val)){
-
-brightness = val;
-
-if(brightness > prevBrightness){
-goingUp = true;
-}
-
-if(goingUp && brightness < prevBrightness){
-
-breathCount++;
-goingUp = false;
-
-if(breathCount % 3 === 0){
-
-growLevel++;
-generateTree();
+fill(255,255,255,150);
+circle(x,y,1);
 
 }
 
-}
+// moon
+fill(240);
+noStroke();
+circle(width-140,120,80);
 
-prevBrightness = brightness;
-
-}
-
-}
-
-}
-
-// 🖱 交互
-function mousePressed(){
-growLevel++;
-generateTree();
-}
-
-function mouseDragged(){
-fireflies.push(new Firefly());
 }
