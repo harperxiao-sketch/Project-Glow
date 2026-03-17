@@ -4,6 +4,7 @@
 
 let branches = [];
 let leaves = [];
+let particles = [];
 
 let growQueue = [];
 
@@ -33,7 +34,7 @@ function draw(){
 
 drawBackground();
 
-// ⭐ 每5秒长一层
+// ⭐ 自动生长（5秒）
 if(millis() - lastGrowTime > 5000){
 growStep();
 lastGrowTime = millis();
@@ -41,11 +42,12 @@ lastGrowTime = millis();
 
 drawTree();
 updateLeaves();
+updateParticles();
 
 }
 
 // ======================
-// 🌱 生长（逐层）
+// 🌱 GROWTH
 // ======================
 
 function growStep(){
@@ -80,7 +82,7 @@ branches.push(right);
 newQueue.push(left);
 newQueue.push(right);
 
-// 🌿 生成叶子
+// 🌿 叶子
 if(b.depth > 2){
 leaves.push(new Leaf(b.endX, b.endY));
 }
@@ -94,7 +96,7 @@ growQueue = newQueue;
 }
 
 // ======================
-// 🌳 BRANCH（动画生长）
+// 🌳 BRANCH
 // ======================
 
 class Branch{
@@ -107,7 +109,7 @@ this.angle = angle;
 this.len = len;
 this.depth = depth;
 
-this.progress = 0; // ⭐ 生长进度
+this.progress = 0;
 
 this.endX = x + cos(angle)*len;
 this.endY = y + sin(angle)*len;
@@ -116,7 +118,6 @@ this.endY = y + sin(angle)*len;
 
 update(){
 
-// ⭐ 慢慢长出来
 if(this.progress < 1){
 this.progress += 0.02;
 }
@@ -127,7 +128,6 @@ display(){
 
 this.update();
 
-// ⭐ 插值（关键）
 let ex = lerp(this.x, this.endX, this.progress);
 let ey = lerp(this.y, this.endY, this.progress);
 
@@ -150,19 +150,7 @@ line(this.x, this.y, ex, ey);
 }
 
 // ======================
-// DRAW TREE
-// ======================
-
-function drawTree(){
-
-for(let b of branches){
-b.display();
-}
-
-}
-
-// ======================
-// 🌿 LEAF（原版）
+// 🌿 LEAF（带交互）
 // ======================
 
 class Leaf{
@@ -177,6 +165,7 @@ display(){
 
 let d = dist(mouseX, mouseY, this.x, this.y);
 
+// 🖱 靠近发光
 if(d < 120){
 fill(160,255,200);
 }else{
@@ -185,6 +174,11 @@ fill(100,200,140);
 
 noStroke();
 ellipse(this.x, this.y, this.size, this.size*0.6);
+
+// ✨ 自动粒子
+if(random()<0.01){
+particles.push(new Glow(this.x, this.y));
+}
 
 }
 
@@ -199,7 +193,52 @@ l.display();
 }
 
 // ======================
-// 🌙 BACKGROUND（原版）
+// ✨ PARTICLES
+// ======================
+
+class Glow{
+
+constructor(x,y){
+this.x = x;
+this.y = y;
+this.life = 100;
+this.vx = random(-0.3,0.3);
+this.vy = random(-1,-0.5);
+}
+
+update(){
+this.x += this.vx;
+this.y += this.vy;
+this.life--;
+}
+
+display(){
+
+fill(150,255,220,this.life);
+noStroke();
+circle(this.x, this.y, 4);
+
+}
+
+}
+
+function updateParticles(){
+
+for(let i=particles.length-1;i>=0;i--){
+
+particles[i].update();
+particles[i].display();
+
+if(particles[i].life<0){
+particles.splice(i,1);
+}
+
+}
+
+}
+
+// ======================
+// 🌙 BACKGROUND（无银河）
 // ======================
 
 function drawBackground(){
@@ -223,4 +262,18 @@ fill(240);
 noStroke();
 circle(width-140,120,80);
 
+}
+
+// ======================
+// 🖱 INTERACTION
+// ======================
+
+// 点击 → 立即长一层
+function mousePressed(){
+growStep();
+}
+
+// 拖动 → 粒子
+function mouseDragged(){
+particles.push(new Glow(mouseX, mouseY));
 }
